@@ -33,7 +33,7 @@
   },
   "type": "module",
   "bin": {
-    "park-cli": "dist/index.js"
+    "park": "dist/index.js"
   },
   "exports": {
     ".": {

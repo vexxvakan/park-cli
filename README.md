@@ -29,6 +29,8 @@ A command-line tool for integrating Park UI components into your project.
 
 ## Usage
 
+Run it with `bunx @vexxdev/park-cli <command>`, or install it globally (`bun add -g @vexxdev/park-cli`) and run `park <command>`.
+
 ### Initialize Park UI
 
 Set up Park UI in your project with an interactive prompt:
@@ -74,8 +76,8 @@ bunx @vexxdev/park-cli debug
 ## Options
 
 ```bash
-park-cli -v, --version    # Display version number
-park-cli -h, --help       # Display help information
+park -v, --version    # Display version number
+park -h, --help       # Display help information
 ```
 
 ## Support
