@@ -4,6 +4,12 @@
 
 ### Added
 
+- Installed code is modernized:
+  - On React 19 or newer, `forwardRef` is dropped: components take `ref` as a prop.
+  - With React Compiler (`babel-plugin-react-compiler` in `package.json`), `useMemo` is removed.
+  - `vh`/`vw` become `dvh`/`dvw`.
+  - List keys come from data instead of the array index (carousel, pagination, skeleton, slider, tags input), so `react/no-array-index-key` passes.
+  - `init` adds a `prefers-reduced-motion` rule to the theme's global CSS that stops animations, transitions, smooth scrolling and view transitions.
 - Registry colors are written as `oklch()`: hex and `rgb()`/`rgba()` values in installed files are converted (lossless for every 8-bit sRGB color, alpha included), and `black`/`white` keywords in shadow values become `{colors.black}`/`{colors.white}` tokens.
 - `init` flags for non-interactive use: `--framework`, `--accent`, `--gray`, `--radius`, and `-y, --yes` for defaults. Without a terminal, `init` fails and names the missing flags instead of waiting on a prompt.
 

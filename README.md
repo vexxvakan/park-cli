@@ -24,6 +24,7 @@ Fork of `@park-ui/cli` 1.0.1 from [cschroeter/park-ui](https://github.com/cschro
   ],
   ```
 
+- **Modern React and CSS:** on React 19, `forwardRef` is replaced by `ref` as a prop; with React Compiler installed, `useMemo` is removed; `vh`/`vw` become `dvh`/`dvw`; list keys come from data, not the array index; and `init` adds a `prefers-reduced-motion` rule to the global CSS. `"use client"` stays, for projects that use React Server Components.
 - **Re-running init:** the recipe index is kept, so recipes added with `add` stay registered.
 - **Aliases:** registry imports written as `@/components/ui` (and `@/components`, `@/theme`, …) are rewritten to the aliases in `components.json`.
 - **Import maps:** registry files import from `styled-system/*`; they are rewritten to the project's Panda `importMap`.

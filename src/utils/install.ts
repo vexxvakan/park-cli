@@ -6,7 +6,7 @@ import { Config } from './config'
 import { FileError } from './errors'
 import { updateIndexFile } from './index-file'
 import { findUp } from './fs'
-import { adaptRegistrySource, readImportMap, rewriteTypeImports, usesPandaTypes } from './import-map'
+import { adaptRegistrySource, readImportMap, readProject, rewriteTypeImports, usesPandaTypes } from './import-map'
 import { PandaConfig, updatePandaConfig } from './panda-config'
 import { updateRecipeIndex } from './recipes'
 
@@ -14,8 +14,9 @@ export const install = ({ panda, files = [] }: RegistryItem) =>
   Effect.all([
     Config,
     PandaConfig.pipe(Effect.flatMap(({ path }) => readImportMap(path))),
+    PandaConfig.pipe(Effect.flatMap(({ path }) => readProject(dirname(path)))),
   ]).pipe(
-    Effect.flatMap(([{ resolvedPaths, aliases }, importMap]) =>
+    Effect.flatMap(([{ resolvedPaths, aliases }, importMap, project]) =>
       Effect.all([
         Effect.forEach(files, (file) =>
           pipe(
@@ -42,7 +43,10 @@ export const install = ({ panda, files = [] }: RegistryItem) =>
                 )
                 // `init` ships an empty recipe index; re-running it must not drop recipes `add` registered.
                 if (isRecipeIndex(file) && (await Bun.file(target).exists())) return
-                await Bun.write(target, adaptRegistrySource(file.content, { importMap, aliases }))
+                await Bun.write(
+                  target,
+                  adaptRegistrySource(file.content, { importMap, aliases, project, path: file.path }),
+                )
               },
               catch: () => FileError(file.path),
             }),

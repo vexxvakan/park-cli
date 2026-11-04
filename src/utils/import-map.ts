@@ -3,6 +3,7 @@ import { Effect } from 'effect'
 import { loadFile } from 'magicast'
 import { PandaVersionUnsupported } from './errors'
 import { findUp } from './fs'
+import { addReducedMotion, dropForwardRef, dropMemo, dynamicViewport, stableKeys } from './modernize'
 import { toOklch } from './oklch'
 
 const DEFAULT_IMPORT_MAP = 'styled-system'
@@ -94,23 +95,60 @@ export const rewriteAliases = (content: string, aliases: Aliases) =>
     content,
   )
 
+/** What the project supports, read once per install. */
+export interface Project {
+  /** React 19 or newer: `ref` is a prop, so `forwardRef` goes. */
+  readonly react19: boolean
+  /** React Compiler is installed: manual `useMemo` goes. */
+  readonly reactCompiler: boolean
+}
+
 interface Target {
   readonly importMap: string
   readonly aliases: Aliases
+  readonly project?: Project
+  /** Registry path of the file, e.g. `global-css.ts`. */
+  readonly path?: string
 }
 
 /**
  * Adapts registry source, written for Panda 1, the `@/` alias and the default import map, to this project.
  * Every `createStyleContext` in the registry wraps a slot recipe, which v2 names `createSlotRecipeContext`.
- * Hex and `rgba()` colors become `oklch()`.
+ * Colors become `oklch()`, `vh`/`vw` become `dvh`/`dvw`, list keys come from data, and the
+ * theme's global CSS honours reduced motion. On React 19 `forwardRef` is dropped, and with
+ * React Compiler so is `useMemo`.
  */
-export const adaptRegistrySource = (content: string, { importMap, aliases }: Target) =>
-  toOklch(
-    rewriteTypeImports(rewriteAliases(rewriteImportMap(content, importMap), aliases)).replace(
-      /\bcreateStyleContext\b/g,
-      'createSlotRecipeContext',
-    ),
+export const adaptRegistrySource = (content: string, { importMap, aliases, project, path }: Target) => {
+  let source = rewriteTypeImports(rewriteAliases(rewriteImportMap(content, importMap), aliases)).replace(
+    /\bcreateStyleContext\b/g,
+    'createSlotRecipeContext',
   )
+  source = stableKeys(dynamicViewport(toOklch(source)))
+  if (path === 'global-css.ts') source = addReducedMotion(source)
+  if (project?.reactCompiler) source = dropMemo(source)
+  if (project?.react19) source = dropForwardRef(source)
+  return source
+}
+
+/** Reads the project's React version and whether React Compiler is installed. */
+export const readProject = (from: string) =>
+  Effect.promise(async (): Promise<Project> => {
+    const reactManifest = await findUp(join('node_modules', 'react', 'package.json'), from)
+    const reactVersion = reactManifest
+      ? ((await Bun.file(reactManifest).json()) as { version?: string }).version
+      : undefined
+    const manifest = await findUp('package.json', from)
+    const { dependencies = {}, devDependencies = {} } = manifest
+      ? ((await Bun.file(manifest).json()) as {
+          dependencies?: Record<string, string>
+          devDependencies?: Record<string, string>
+        })
+      : {}
+    return {
+      react19: reactVersion !== undefined && Number.parseInt(reactVersion, 10) >= 19,
+      reactCompiler: 'babel-plugin-react-compiler' in { ...dependencies, ...devDependencies },
+    }
+  })
 
 /** True when adapted source imports `@pandacss/types`, which projects rarely list themselves. */
 export const usesPandaTypes = (content: string) => /from\s*['"]@pandacss\/types['"]/.test(content)
