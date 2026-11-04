@@ -4,14 +4,14 @@ import { Effect, Layer, pipe, Schema } from 'effect'
 import { Config, ConigSchema, saveConfig } from '~/utils/config'
 import { install } from '~/utils/install'
 import { updatePandaConfig, withPandaConfig } from '~/utils/panda-config'
-import { promptInitConfig } from '~/utils/prompt'
+import { type InitOptions, promptInitConfig } from '~/utils/prompt'
 import { fetchRegistryItems } from '~/utils/registry-client'
 import { withTSConfig } from '~/utils/tsconfig'
 
-export const init = async () => {
+export const init = async (options: InitOptions) => {
   p.intro(styleText(['bgCyan', 'black'], ' Park UI '))
 
-  const program = promptInitConfig().pipe(
+  const program = promptInitConfig(options).pipe(
     Effect.flatMap(({ framework, accentColor, grayColor, borderRadius }) =>
       pipe(
         saveConfig(framework),
@@ -32,6 +32,7 @@ export const init = async () => {
     Effect.tap(() => p.outro(`Park UI has been initialized successfully! 🎉`)),
     Effect.catchAll((error) =>
       Effect.sync(() => {
+        process.exitCode = 1
         p.log.error(`An error occurred while initializing Park UI: ${describeError(error)}`)
         p.outro(
           `You can report this issue at: ${styleText(['underline', 'cyan'], 'https://github.com/vexxvakan/park-cli/issues')}`,

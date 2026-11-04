@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { findUp, matchPath } from './fs'
 import { updateIndexFile } from './index-file'
+import { type Radius, radiusTokens } from './prompt'
 import { Effect, Either } from 'effect'
 import { adaptRegistrySource, requirePanda2, rewriteAliases, rewriteImportMap } from './import-map'
 
@@ -168,5 +169,24 @@ describe('requirePanda2', () => {
   test.each(['1.9.0', undefined])('fails for Panda %p', async (version) => {
     const result = await Effect.runPromise(Effect.either(requirePanda2(await project(version))))
     expect(Either.isLeft(result) && result.left._tag).toBe('PandaVersionUnsupported')
+  })
+})
+
+describe('radiusTokens', () => {
+  const radii = (radius: Radius) => radiusTokens(radius).theme.extend.semanticTokens.radii
+  test.each([
+    ['none', 'none', 'none', 'none'],
+    ['xs', '2xs', 'xs', 'sm'],
+    ['sm', 'xs', 'sm', 'md'],
+    ['md', 'sm', 'md', 'lg'],
+    ['lg', 'md', 'lg', 'xl'],
+    ['xl', 'lg', 'xl', '2xl'],
+    ['2xl', 'xl', '2xl', '3xl'],
+  ] as const)('%s maps to %s / %s / %s', (radius, l1, l2, l3) => {
+    expect(radii(radius)).toEqual({
+      l1: { value: `{radii.${l1}}` },
+      l2: { value: `{radii.${l2}}` },
+      l3: { value: `{radii.${l3}}` },
+    })
   })
 })

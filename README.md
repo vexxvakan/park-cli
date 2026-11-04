@@ -11,7 +11,8 @@ Fork of `@park-ui/cli` 1.0.1 from [cschroeter/park-ui](https://github.com/cschro
 - **Aliases:** registry imports written as `@/components/ui` (and `@/components`, `@/theme`, …) are rewritten to the aliases in `components.json`.
 - **Import maps:** registry files import from `styled-system/*`; they are rewritten to the project's Panda `importMap`.
 - **Slot recipes:** recipes declared with `defineSlotRecipe` are registered under `slotRecipes` (upstream matched `slotRecipe` case-sensitively and filed them under `recipes`).
-- **Errors:** failures name their cause instead of a generic message.
+- **Errors:** failures name their cause instead of a generic message, and exit with code 1.
+- **Init:** the chosen border radius is applied (upstream always wrote `sm`), and flags make `init` non-interactive.
 - **Dependencies:** runtime dependencies cut from 13 to 4 (`effect` 3, `@clack/prompts`, `magicast`, `tsconfck`), all at their latest versions. Bun and Node built-ins replace `@better-fetch/fetch`, `commander`, `cosmiconfig`, `fs-extra`, `package-directory`, `picocolors`, `ts-morph`, `tsconfig-paths`, and `zod`. `effect` stays on 3.x: 4.x renames most of the APIs this CLI uses.
 - **Build:** `bun build` replaces `tsup`; no declaration files, since nothing imports a CLI.
 
@@ -19,7 +20,6 @@ Production install: 17 packages and 44 MB instead of 55 packages and 92 MB. `--v
 
 Known upstream issues left as is:
 
-- `init` asks for a border radius but always applies `sm`.
 - The registry's `checkbox` recipe nests `control: { control: … }` in its `solid` variant; Panda 2 reports it as `nested_property`. Unwrap the inner `control` after adding it.
 
 Verified with `init` and `add --all` (every React component) on TypeScript 7.0.2 and Panda 2.5.0: `tsc` reports no errors and `panda codegen` warns only about the checkbox recipe.
@@ -44,6 +44,21 @@ This command will:
 - Let you choose accent and gray color themes
 - Install the necessary theme configuration
 - Set up the initial component structure
+
+For scripts and agents, pass every answer as a flag; without a terminal, `init` fails instead of prompting:
+
+```bash
+bunx @vexxdev/park-cli init --framework react --accent blue --gray slate --radius md
+bunx @vexxdev/park-cli init --yes   # react, neutral, neutral, sm
+```
+
+| Flag | Values |
+| --- | --- |
+| `--framework` | `react`, `solid` |
+| `--accent` | any Park UI color (`blue`, `iris`, `jade`, …) |
+| `--gray` | `neutral`, `mauve`, `slate`, `sage`, `olive`, `sand` |
+| `--radius` | `none`, `xs`, `sm`, `md`, `lg`, `xl`, `2xl` |
+| `-y`, `--yes` | use defaults for flags not given |
 
 ### Add Components
 

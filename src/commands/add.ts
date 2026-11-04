@@ -23,6 +23,7 @@ export const add = async (components: string[], opts: { all: boolean }) => {
       Effect.tap(() => p.outro('Components installed. Happy Hacking 🤞')),
       Effect.catchAll((error) =>
         Effect.sync(() => {
+          process.exitCode = 1
           p.log.error(
             `An unexpected error occurred while installing components: ${'message' in error ? error.message : String(error)}`,
           )

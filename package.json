@@ -1,6 +1,6 @@
 {
   "name": "@vexxdev/park-cli",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Park UI CLI fork for TypeScript 7 and Panda CSS 2, running on Bun",
   "keywords": [
     "cli",
