@@ -8,7 +8,7 @@ import { init } from './commands/init'
 process.on('SIGINT', () => process.exit(0))
 process.on('SIGTERM', () => process.exit(0))
 
-const usage = `Usage: park-ui <command> [options]
+const usage = `Usage: park-cli <command> [options]
 
 Build your own Design System
 

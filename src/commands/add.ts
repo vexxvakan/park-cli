@@ -27,7 +27,7 @@ export const add = async (components: string[], opts: { all: boolean }) => {
             `An unexpected error occurred while installing components: ${'message' in error ? error.message : String(error)}`,
           )
           p.outro(
-            `You can report this issue at: ${styleText(['underline', 'cyan'], 'https://github.com/cschroeter/park-ui/issues')}`,
+            `You can report this issue at: ${styleText(['underline', 'cyan'], 'https://github.com/vexxvakan/park-cli/issues')}`,
           )
         }),
       ),

@@ -1,4 +1,6 @@
-# Park UI CLI (TypeScript 7 + Panda 2 fork)
+# park-cli
+
+Park UI CLI for TypeScript 7 and Panda CSS 2, running on Bun.
 
 Fork of `@park-ui/cli` 1.0.1 from [cschroeter/park-ui](https://github.com/cschroeter/park-ui/tree/102769c/packages/cli) (`102769c`, 2026-02-21). Requires Bun 1.3 or newer and a project on `@pandacss/dev` 2 or newer; Panda 1 is not supported.
 
@@ -32,7 +34,7 @@ A command-line tool for integrating Park UI components into your project.
 Set up Park UI in your project with an interactive prompt:
 
 ```bash
-bun /path/to/park-cli/src/index.ts init
+bunx park-cli init
 ```
 
 This command will:
@@ -46,19 +48,19 @@ This command will:
 Add specific components to your project:
 
 ```bash
-bun /path/to/park-cli/src/index.ts add button card dialog
+bunx park-cli add button card dialog
 ```
 
 Add all available components:
 
 ```bash
-bun /path/to/park-cli/src/index.ts add --all
+bunx park-cli add --all
 ```
 
 You can also add more Radix colors this way
 
 ```bash
-bun /path/to/park-cli/src/index.ts add iris jade crimson
+bunx park-cli add iris jade crimson
 ```
 
 ### Debug Configuration
@@ -66,16 +68,16 @@ bun /path/to/park-cli/src/index.ts add iris jade crimson
 View your current Park UI configuration:
 
 ```bash
-bun /path/to/park-cli/src/index.ts debug
+bunx park-cli debug
 ```
 
 ## Options
 
 ```bash
-park-ui -v, --version    # Display version number
-park-ui -h, --help       # Display help information
+park-cli -v, --version    # Display version number
+park-cli -h, --help       # Display help information
 ```
 
 ## Support
 
-Report issues at: https://github.com/cschroeter/park-ui/issues
+Report issues at: https://github.com/vexxvakan/park-cli/issues

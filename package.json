@@ -1,31 +1,7 @@
 {
-  "name": "@park-ui/cli",
-  "version": "1.0.1-panda2.0",
-  "description": "CLI tool for Park UI components",
-  "type": "module",
-  "bin": {
-    "park-ui": "dist/index.js"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "license": "MIT",
-  "author": {
-    "name": "grizzly_codes",
-    "url": "https://x.com/grizzly_codes"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/cschroeter/park-ui.git",
-    "directory": "packages/cli"
-  },
-  "bugs": {
-    "url": "https://github.com/cschroeter/park-ui/issues"
-  },
-  "homepage": "https://park-ui.com",
-  "files": [
-    "dist"
-  ],
+  "name": "park-cli",
+  "version": "1.0.0",
+  "description": "Park UI CLI fork for TypeScript 7 and Panda CSS 2, running on Bun",
   "keywords": [
     "cli",
     "components",
@@ -36,16 +12,49 @@
     "solid",
     "park-ui"
   ],
+  "license": "MIT",
+  "author": {
+    "name": "vexxvakan",
+    "url": "https://github.com/vexxvakan"
+  },
+  "contributors": [
+    {
+      "name": "grizzly_codes",
+      "url": "https://x.com/grizzly_codes"
+    }
+  ],
+  "homepage": "https://github.com/vexxvakan/park-cli#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vexxvakan/park-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vexxvakan/park-cli/issues"
+  },
+  "type": "module",
+  "bin": {
+    "park-cli": "dist/index.js"
+  },
   "exports": {
     ".": {
       "default": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "start": "bun ./src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test ./src",
-    "build": "bun build ./src/index.ts --target bun --outdir dist --minify --sourcemap=linked --packages external"
+    "build": "bun build ./src/index.ts --target bun --outdir dist --minify --sourcemap=linked --packages external",
+    "prepublishOnly": "bun run typecheck && bun test ./src && bun run build"
   },
   "dependencies": {
     "@clack/prompts": "1.8.1",

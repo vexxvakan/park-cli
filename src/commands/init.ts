@@ -34,7 +34,7 @@ export const init = async () => {
       Effect.sync(() => {
         p.log.error(`An error occurred while initializing Park UI: ${describeError(error)}`)
         p.outro(
-          `You can report this issue at: ${styleText(['underline', 'cyan'], 'https://github.com/cschroeter/park-ui/issues')}`,
+          `You can report this issue at: ${styleText(['underline', 'cyan'], 'https://github.com/vexxvakan/park-cli/issues')}`,
         )
       }),
     ),
