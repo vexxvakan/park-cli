@@ -3,6 +3,7 @@ import { Effect } from 'effect'
 import { loadFile } from 'magicast'
 import { PandaVersionUnsupported } from './errors'
 import { findUp } from './fs'
+import { toOklch } from './oklch'
 
 const DEFAULT_IMPORT_MAP = 'styled-system'
 
@@ -101,11 +102,14 @@ interface Target {
 /**
  * Adapts registry source, written for Panda 1, the `@/` alias and the default import map, to this project.
  * Every `createStyleContext` in the registry wraps a slot recipe, which v2 names `createSlotRecipeContext`.
+ * Hex and `rgba()` colors become `oklch()`.
  */
 export const adaptRegistrySource = (content: string, { importMap, aliases }: Target) =>
-  rewriteTypeImports(rewriteAliases(rewriteImportMap(content, importMap), aliases)).replace(
-    /\bcreateStyleContext\b/g,
-    'createSlotRecipeContext',
+  toOklch(
+    rewriteTypeImports(rewriteAliases(rewriteImportMap(content, importMap), aliases)).replace(
+      /\bcreateStyleContext\b/g,
+      'createSlotRecipeContext',
+    ),
   )
 
 /** True when adapted source imports `@pandacss/types`, which projects rarely list themselves. */

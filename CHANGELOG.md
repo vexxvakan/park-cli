@@ -4,6 +4,7 @@
 
 ### Added
 
+- Registry colors are written as `oklch()`: hex and `rgb()`/`rgba()` values in installed files are converted (lossless for every 8-bit sRGB color, alpha included), and `black`/`white` keywords in shadow values become `{colors.black}`/`{colors.white}` tokens.
 - `init` flags for non-interactive use: `--framework`, `--accent`, `--gray`, `--radius`, and `-y, --yes` for defaults. Without a terminal, `init` fails and names the missing flags instead of waiting on a prompt.
 
 ### Fixed
@@ -11,6 +12,7 @@
 - `init` applies the chosen border radius; it always wrote the `sm` scale.
 - `none` and `xs` radii no longer reference `radii.none` and `radii.2xs`, which `@pandacss/preset-panda` does not define; they use `0` and `0.0625rem`.
 - Failed `init` and `add` runs exit with code 1.
+- Re-running `init` keeps the recipe index; it used to reset it and drop every recipe `add` had registered.
 
 ## [1.0.0] - 2026-11-04
 

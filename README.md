@@ -8,6 +8,23 @@ Fork of `@park-ui/cli` 1.0.1 from [cschroeter/park-ui](https://github.com/cschro
 
 - **TypeScript 7:** `tsconfig.json` without `baseUrl` is accepted; `paths` resolve from the tsconfig directory, as TypeScript does.
 - **Panda 2 only:** the CLI exits with an error unless the project's installed `@pandacss/dev` is 2 or newer. Registry files, still written for Panda 1, are rewritten on install: `createStyleContext` becomes `createSlotRecipeContext` (every registry use wraps a slot recipe), and config types `@pandacss/dev` no longer exports (`RecipeConfig`) are imported from `@pandacss/types`. The CLI warns once when the project does not list `@pandacss/types`.
+- **oklch colors:** hex and `rgb()`/`rgba()` colors in registry files are converted to `oklch()` on install. The conversion round-trips every 8-bit sRGB color exactly. To keep `@pandacss/preset-panda`'s hex palette and rgb shadows out of the generated CSS as well, add this plugin to `panda.config.ts`:
+
+  ```ts
+  plugins: [
+    {
+      name: 'park-ui-oklch',
+      hooks: {
+        'preset:resolved': ({ name, preset, utils }) =>
+          name === '@pandacss/preset-panda'
+            ? utils.omit(preset, ['theme.tokens.colors', 'theme.semanticTokens.colors', 'theme.tokens.shadows'])
+            : undefined,
+      },
+    },
+  ],
+  ```
+
+- **Re-running init:** the recipe index is kept, so recipes added with `add` stay registered.
 - **Aliases:** registry imports written as `@/components/ui` (and `@/components`, `@/theme`, …) are rewritten to the aliases in `components.json`.
 - **Import maps:** registry files import from `styled-system/*`; they are rewritten to the project's Panda `importMap`.
 - **Slot recipes:** recipes declared with `defineSlotRecipe` are registered under `slotRecipes` (upstream matched `slotRecipe` case-sensitively and filed them under `recipes`).

@@ -20,29 +20,30 @@ export const install = ({ panda, files = [] }: RegistryItem) =>
         Effect.forEach(files, (file) =>
           pipe(
             Effect.tryPromise({
-              try: () =>
-                Bun.write(
-                  Match.value(file).pipe(
-                    Match.when({ type: 'registry:block' }, ({ path }) =>
-                      join(resolvedPaths.components, path),
-                    ),
-                    Match.when({ type: 'registry:color' }, ({ path }) =>
-                      join(resolvedPaths.theme, path),
-                    ),
-                    Match.when({ type: 'registry:component' }, ({ path }) =>
-                      join(resolvedPaths.components, path),
-                    ),
-                    Match.when({ type: 'registry:recipe' }, ({ path }) =>
-                      join(resolvedPaths.recipes, path),
-                    ),
-                    Match.when({ type: 'registry:theme' }, ({ path }) =>
-                      join(resolvedPaths.theme, path),
-                    ),
-                    Match.when({ type: 'registry:ui' }, ({ path }) => join(resolvedPaths.ui, path)),
-                    Match.exhaustive,
+              try: async () => {
+                const target = Match.value(file).pipe(
+                  Match.when({ type: 'registry:block' }, ({ path }) =>
+                    join(resolvedPaths.components, path),
                   ),
-                  adaptRegistrySource(file.content, { importMap, aliases }),
-                ),
+                  Match.when({ type: 'registry:color' }, ({ path }) =>
+                    join(resolvedPaths.theme, path),
+                  ),
+                  Match.when({ type: 'registry:component' }, ({ path }) =>
+                    join(resolvedPaths.components, path),
+                  ),
+                  Match.when({ type: 'registry:recipe' }, ({ path }) =>
+                    join(resolvedPaths.recipes, path),
+                  ),
+                  Match.when({ type: 'registry:theme' }, ({ path }) =>
+                    join(resolvedPaths.theme, path),
+                  ),
+                  Match.when({ type: 'registry:ui' }, ({ path }) => join(resolvedPaths.ui, path)),
+                  Match.exhaustive,
+                )
+                // `init` ships an empty recipe index; re-running it must not drop recipes `add` registered.
+                if (isRecipeIndex(file) && (await Bun.file(target).exists())) return
+                await Bun.write(target, adaptRegistrySource(file.content, { importMap, aliases }))
+              },
               catch: () => FileError(file.path),
             }),
             Effect.tap(() =>
@@ -92,3 +93,6 @@ const warnMissingPandaTypes = async () => {
     `Installed recipes import types from @pandacss/types, which ${dirname(manifest)}/package.json does not list.\nAdd it as a dev dependency at the same version as @pandacss/dev.`,
   )
 }
+
+const isRecipeIndex = (file: { type: string; path: string }) =>
+  file.type === 'registry:recipe' && file.path === 'index.ts'
