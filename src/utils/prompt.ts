@@ -10,19 +10,27 @@ export type Radius = (typeof RADII)[number]
 /** Panda radii scale; `l2` is the chosen step, `l1` one smaller, `l3` one larger. */
 const SCALE = ['2xs', 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl'] as const
 
+/**
+ * Steps `@pandacss/preset-panda` has no token for, written as plain values.
+ * `2xs` is half of `xs` (0.125rem).
+ */
+const RAW: Partial<Record<string, string>> = { none: '0', '2xs': '0.0625rem' }
+
+const tokenValue = (step: string) => RAW[step] ?? `{radii.${step}}`
+
 /** Semantic radius tokens for a chosen scale, matching the Park UI website's theme builder. */
 export const radiusTokens = (radius: Radius) => {
   const step = SCALE.indexOf(radius as (typeof SCALE)[number])
-  const [l1, l2, l3] =
-    radius === 'none' || step === -1 ? ['none', 'none', 'none'] : SCALE.slice(step - 1, step + 2)
+  const [l1 = 'none', l2 = 'none', l3 = 'none'] =
+    radius === 'none' || step === -1 ? [] : SCALE.slice(step - 1, step + 2)
   return {
     theme: {
       extend: {
         semanticTokens: {
           radii: {
-            l1: { value: `{radii.${l1}}` },
-            l2: { value: `{radii.${l2}}` },
-            l3: { value: `{radii.${l3}}` },
+            l1: { value: tokenValue(l1) },
+            l2: { value: tokenValue(l2) },
+            l3: { value: tokenValue(l3) },
           },
         },
       },

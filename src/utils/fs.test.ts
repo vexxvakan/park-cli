@@ -174,19 +174,16 @@ describe('requirePanda2', () => {
 
 describe('radiusTokens', () => {
   const radii = (radius: Radius) => radiusTokens(radius).theme.extend.semanticTokens.radii
+  const token = (step: string) => ({ value: `{radii.${step}}` })
   test.each([
-    ['none', 'none', 'none', 'none'],
-    ['xs', '2xs', 'xs', 'sm'],
-    ['sm', 'xs', 'sm', 'md'],
-    ['md', 'sm', 'md', 'lg'],
-    ['lg', 'md', 'lg', 'xl'],
-    ['xl', 'lg', 'xl', '2xl'],
-    ['2xl', 'xl', '2xl', '3xl'],
-  ] as const)('%s maps to %s / %s / %s', (radius, l1, l2, l3) => {
-    expect(radii(radius)).toEqual({
-      l1: { value: `{radii.${l1}}` },
-      l2: { value: `{radii.${l2}}` },
-      l3: { value: `{radii.${l3}}` },
-    })
+    ['none', { value: '0' }, { value: '0' }, { value: '0' }],
+    ['xs', { value: '0.0625rem' }, token('xs'), token('sm')],
+    ['sm', token('xs'), token('sm'), token('md')],
+    ['md', token('sm'), token('md'), token('lg')],
+    ['lg', token('md'), token('lg'), token('xl')],
+    ['xl', token('lg'), token('xl'), token('2xl')],
+    ['2xl', token('xl'), token('2xl'), token('3xl')],
+  ] as const)('%s', (radius, l1, l2, l3) => {
+    expect(radii(radius)).toEqual({ l1, l2, l3 })
   })
 })

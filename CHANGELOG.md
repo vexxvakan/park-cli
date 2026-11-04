@@ -9,6 +9,7 @@
 ### Fixed
 
 - `init` applies the chosen border radius; it always wrote the `sm` scale.
+- `none` and `xs` radii no longer reference `radii.none` and `radii.2xs`, which `@pandacss/preset-panda` does not define; they use `0` and `0.0625rem`.
 - Failed `init` and `add` runs exit with code 1.
 
 ## [1.0.0] - 2026-11-04
