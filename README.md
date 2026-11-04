@@ -34,7 +34,7 @@ A command-line tool for integrating Park UI components into your project.
 Set up Park UI in your project with an interactive prompt:
 
 ```bash
-bunx park-cli init
+bunx @vexxdev/park-cli init
 ```
 
 This command will:
@@ -48,19 +48,19 @@ This command will:
 Add specific components to your project:
 
 ```bash
-bunx park-cli add button card dialog
+bunx @vexxdev/park-cli add button card dialog
 ```
 
 Add all available components:
 
 ```bash
-bunx park-cli add --all
+bunx @vexxdev/park-cli add --all
 ```
 
 You can also add more Radix colors this way
 
 ```bash
-bunx park-cli add iris jade crimson
+bunx @vexxdev/park-cli add iris jade crimson
 ```
 
 ### Debug Configuration
@@ -68,7 +68,7 @@ bunx park-cli add iris jade crimson
 View your current Park UI configuration:
 
 ```bash
-bunx park-cli debug
+bunx @vexxdev/park-cli debug
 ```
 
 ## Options
