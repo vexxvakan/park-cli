@@ -1,18 +1,44 @@
-import path, { join } from 'node:path'
-import * as p from '@clack/prompts'
-import { Context, Effect, Layer, pipe, Schema } from 'effect'
-import type { Framework } from '~/schema'
-import { ConfigInvalid, ConfigNotFound, FileError } from './errors'
-import { findUp, matchPath } from './fs'
-import { PandaConfig } from './panda-config'
-import { TSConfig } from './tsconfig'
+import path from "node:path"
+import * as p from "@clack/prompts"
+import { Context, Effect, Layer, Schema } from "effect"
+import type { ParseResult } from "effect"
+import type { Framework } from "~/schema"
+import { ConfigInvalid } from "./errors/config-invalid"
+import { ConfigNotFound } from "./errors/config-not-found"
+import { FileError } from "./errors/file-error"
+import { findUp, matchPath } from "./fs"
+import { PandaConfig } from "./panda-config"
+import { TSConfig } from "./tsconfig"
+import type { TSConfigShape } from "./tsconfig"
 
-const BaseConfigSchema = Schema.Struct({
-  framework: Schema.Literal('react', 'solid', 'svelte', 'vue'),
-  panda: Schema.Struct({
-    config: Schema.String,
-  }),
-  aliases: Schema.Struct({
+const AliasesSchema = Schema.Struct({
+  components: Schema.String,
+  hooks: Schema.String,
+  lib: Schema.String,
+  recipes: Schema.String,
+  theme: Schema.String,
+  ui: Schema.String,
+})
+
+const FrameworkSchema = Schema.Literal("react", "solid", "svelte", "vue")
+
+/** `components.json` as written on disk. */
+const ConfigFile = Schema.Struct({
+  aliases: AliasesSchema,
+  framework: FrameworkSchema,
+  panda: Schema.Struct({ config: Schema.String }),
+})
+
+type ConfigFileShape = typeof ConfigFile.Type
+type Aliases = typeof AliasesSchema.Type
+type ResolvedPaths = Record<keyof Aliases, string>
+
+/** The configuration with every alias resolved to a directory. */
+const ResolvedConfig = Schema.Struct({
+  aliases: AliasesSchema,
+  framework: FrameworkSchema,
+  panda: Schema.Struct({ config: Schema.String }),
+  resolvedPaths: Schema.Struct({
     components: Schema.String,
     hooks: Schema.String,
     lib: Schema.String,
@@ -22,126 +48,89 @@ const BaseConfigSchema = Schema.Struct({
   }),
 })
 
-export const ConigSchema = BaseConfigSchema.pipe(
-  Schema.transformOrFail(
-    Schema.Struct({
-      framework: Schema.Literal('react', 'solid', 'svelte', 'vue'),
-      panda: Schema.Struct({
-        config: Schema.String,
-      }),
-      aliases: Schema.Struct({
-        components: Schema.String,
-        hooks: Schema.String,
-        lib: Schema.String,
-        recipes: Schema.String,
-        theme: Schema.String,
-        ui: Schema.String,
-      }),
-      resolvedPaths: Schema.Struct({
-        components: Schema.String,
-        hooks: Schema.String,
-        lib: Schema.String,
-        recipes: Schema.String,
-        theme: Schema.String,
-        ui: Schema.String,
-      }),
-    }),
-    {
-      decode: (config) =>
-        TSConfig.pipe(
-          Effect.flatMap((tsConfig) =>
-            pipe(
-              Effect.promise(() => resolveImport(config.aliases.components, tsConfig)),
-              Effect.map((componentsPath) => componentsPath ?? process.cwd()),
-              Effect.flatMap((componentsPath) =>
-                pipe(
-                  Effect.all({
-                    ui: config.aliases.ui
-                      ? Effect.promise(() => resolveImport(config.aliases.ui, tsConfig))
-                      : Effect.succeed(null),
-                    hooks: config.aliases.hooks
-                      ? Effect.promise(() => resolveImport(config.aliases.hooks, tsConfig))
-                      : Effect.succeed(null),
-                    lib: config.aliases.lib
-                      ? Effect.promise(() => resolveImport(config.aliases.lib, tsConfig))
-                      : Effect.succeed(null),
-                    recipes: config.aliases.recipes
-                      ? Effect.promise(() => resolveImport(config.aliases.recipes, tsConfig))
-                      : Effect.succeed(null),
-                    theme: config.aliases.theme
-                      ? Effect.promise(() => resolveImport(config.aliases.theme, tsConfig))
-                      : Effect.succeed(null),
-                  }),
-                  Effect.map((resolved) => ({
-                    ...config,
-                    resolvedPaths: {
-                      components: componentsPath,
-                      hooks: resolved.hooks ?? path.resolve(componentsPath, '..', 'hooks'),
-                      lib: resolved.lib ?? path.resolve(componentsPath, '..'),
-                      recipes:
-                        resolved.recipes ?? path.resolve(componentsPath, '..', 'theme', 'recipes'),
-                      theme: resolved.theme ?? path.resolve(componentsPath, '..', 'theme'),
-                      ui: resolved.ui ?? path.resolve(componentsPath, 'ui'),
-                    },
-                  })),
-                ),
-              ),
-            ),
-          ),
-        ),
-      encode: (config) => Effect.succeed(config),
-    },
-  ),
-)
+export type ConfigShape = typeof ResolvedConfig.Type
 
-type Config = Schema.Schema.Type<typeof ConigSchema>
+const resolveAlias = (alias: string, tsConfig: TSConfigShape): string | undefined => {
+  if (alias === "") {
+    return undefined
+  }
+  return matchPath(alias, tsConfig.baseUrl, tsConfig.paths)
+}
 
-const getConfigPath = () =>
-  Effect.promise(() => findUp('components.json')).pipe(
-    Effect.map((found) => found ?? join(process.cwd(), 'components.json')),
-  )
+/** Resolves each alias through tsconfig `paths`, falling back to folders next to `components`. */
+const resolvePaths = (config: ConfigFileShape, tsConfig: TSConfigShape): ResolvedPaths => {
+  const { aliases } = config
+  const components = resolveAlias(aliases.components, tsConfig) ?? process.cwd()
+  return {
+    components,
+    hooks: resolveAlias(aliases.hooks, tsConfig) ?? path.resolve(components, "..", "hooks"),
+    lib: resolveAlias(aliases.lib, tsConfig) ?? path.resolve(components, ".."),
+    recipes:
+      resolveAlias(aliases.recipes, tsConfig) ?? path.resolve(components, "..", "theme", "recipes"),
+    theme: resolveAlias(aliases.theme, tsConfig) ?? path.resolve(components, "..", "theme"),
+    ui: resolveAlias(aliases.ui, tsConfig) ?? path.resolve(components, "ui"),
+  }
+}
 
-const getConfig = () =>
-  getConfigPath().pipe(
-    Effect.flatMap((configPath) =>
-      pipe(
-        Effect.tryPromise({
-          try: () => Bun.file(configPath).json(),
-          catch: () => ConfigNotFound(configPath),
-        }),
-        Effect.flatMap((config) =>
-          Schema.decodeUnknown(ConigSchema)(config).pipe(
-            Effect.mapError(() => ConfigInvalid(configPath)),
+export const ConfigSchema = Schema.transformOrFail(ConfigFile, ResolvedConfig, {
+  decode: (config) =>
+    TSConfig.pipe(
+      Effect.map((tsConfig) => ({ ...config, resolvedPaths: resolvePaths(config, tsConfig) })),
+    ),
+  encode: (config) => Effect.succeed(config),
+})
+
+export class Config extends Context.Tag("Config")<Config, ConfigShape>() {}
+
+const CONFIG_FILE = "components.json"
+
+const configPath = (): Effect.Effect<string> =>
+  Effect.promise(async () => (await findUp(CONFIG_FILE)) ?? path.join(process.cwd(), CONFIG_FILE))
+
+const readConfig: Effect.Effect<ConfigShape, ConfigNotFound | ConfigInvalid, TSConfig> =
+  configPath().pipe(
+    Effect.flatMap((file) =>
+      Effect.tryPromise({
+        catch: () => new ConfigNotFound(file),
+        try: async (): Promise<unknown> => Bun.file(file).json(),
+      }).pipe(
+        Effect.flatMap((json) =>
+          Schema.decodeUnknown(ConfigSchema)(json).pipe(
+            Effect.mapError(() => new ConfigInvalid(file)),
           ),
         ),
       ),
     ),
   )
 
-export const Config = Context.GenericTag<Config>('Config')
-const ConfigLayer = Layer.effect(Config, getConfig())
+const ConfigLive = Layer.effect(Config, readConfig)
 
-export const withConfig = <A, R>(effect: Effect.Effect<A, never, R>) =>
+/** Provides `components.json`; reports and stops when it is missing or invalid. */
+export const withConfig = <A, R>(
+  effect: Effect.Effect<A, never, R>,
+): Effect.Effect<A | undefined, never, Exclude<R, Config> | TSConfig> =>
   effect.pipe(
-    Effect.provide(ConfigLayer),
+    Effect.provide(ConfigLive),
     Effect.catchAll(({ message }) =>
       Effect.sync(() => {
         p.log.error(message)
-        p.outro(`Run npx @park-ui/cli init to create a new configuration.`)
+        p.outro("Run `park init` to create a new configuration.")
+        process.exitCode = 1
+        return undefined
       }),
     ),
   )
 
-export const saveConfig = (framework: Framework) =>
-  Effect.all([
-    pipe(
-      Effect.all([PandaConfig, TSConfig]),
-      Effect.map(([pandaConfig, { aliasPrefix }]) => ({
-        $schema: 'https://park-ui.com/schema/components.json',
-        framework,
-        panda: {
-          config: path.relative(process.cwd(), pandaConfig.path),
-        },
+const JSON_INDENT = 2
+
+/** Writes `components.json` for this project and returns what it wrote. */
+export const saveConfig = (
+  framework: Framework,
+): Effect.Effect<ConfigFileShape, FileError, PandaConfig | TSConfig> =>
+  Effect.all([PandaConfig, TSConfig, configPath()]).pipe(
+    Effect.flatMap(([pandaConfig, { aliasPrefix }, file]) => {
+      const config = {
+        $schema: "https://park-ui.com/schema/components.json",
         aliases: {
           components: `${aliasPrefix}/components`,
           hooks: `${aliasPrefix}/hooks`,
@@ -150,17 +139,18 @@ export const saveConfig = (framework: Framework) =>
           theme: `${aliasPrefix}/theme`,
           ui: `${aliasPrefix}/components/ui`,
         },
-      })),
-    ),
-    getConfigPath(),
-  ]).pipe(
-    Effect.flatMap(([config, configPath]) =>
-      Effect.tryPromise({
-        try: () => Bun.write(configPath, `${JSON.stringify(config, null, 2)}\n`),
-        catch: () => FileError(configPath),
-      }).pipe(Effect.map(() => config)),
-    ),
+        framework,
+        panda: { config: path.relative(process.cwd(), pandaConfig.path) },
+      }
+      return Effect.tryPromise({
+        catch: () => new FileError(file),
+        try: () => Bun.write(file, `${JSON.stringify(config, undefined, JSON_INDENT)}\n`),
+      }).pipe(Effect.as(config))
+    }),
   )
 
-const resolveImport = async (importPath: string, tsConfig: TSConfig) =>
-  matchPath(importPath, tsConfig.baseUrl, tsConfig.paths)
+/** Decodes a freshly saved `components.json` into the resolved configuration. */
+export const resolveConfig = (
+  config: ConfigFileShape,
+): Effect.Effect<ConfigShape, ParseResult.ParseError, TSConfig> =>
+  Schema.decodeUnknown(ConfigSchema)(config)

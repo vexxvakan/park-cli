@@ -1,8 +1,14 @@
-import { describe, expect, test } from 'bun:test'
-import { addReducedMotion, dropForwardRef, dropMemo, dynamicViewport, stableKeys } from './modernize'
+import { describe, expect, test } from "bun:test"
+import {
+  addReducedMotion,
+  dropForwardRef,
+  dropMemo,
+  dynamicViewport,
+  stableKeys,
+} from "./modernize"
 
-describe('dropForwardRef', () => {
-  test('turns a named forwardRef function into a declaration taking ref as a prop', () => {
+describe("dropForwardRef", () => {
+  test("turns a named forwardRef function into a declaration taking ref as a prop", () => {
     const source = `import { type ComponentProps, forwardRef } from 'react'
 
 export const Indicator = forwardRef<HTMLSpanElement, IndicatorProps>(
@@ -19,7 +25,7 @@ export function Indicator({ ref, ...props }: IndicatorProps & { ref?: Ref<HTMLSp
 `)
   })
 
-  test('rewrites the arrow form with multi-line generics', () => {
+  test("rewrites the arrow form with multi-line generics", () => {
     const source = `import { forwardRef } from 'react'
 export const Group = forwardRef<
   HTMLDivElement,
@@ -35,14 +41,14 @@ export const Group = ({ ref, ...props }: ComponentProps<typeof StyledGroup> & { 
 `)
   })
 
-  test('leaves code without forwardRef alone', () => {
+  test("leaves code without forwardRef alone", () => {
     const source = "import { useState } from 'react'\nexport const A = () => null\n"
     expect(dropForwardRef(source)).toBe(source)
   })
 })
 
-describe('dropMemo', () => {
-  test('unwraps expression and block factories and cleans the import', () => {
+describe("dropMemo", () => {
+  test("unwraps expression and block factories and cleans the import", () => {
     const source = `import { forwardRef, useMemo } from 'react'
 const a = useMemo(() => split(props), [props])
 const b = useMemo(() => {
@@ -60,39 +66,42 @@ const b = (() => {
   })
 })
 
-describe('dynamicViewport', () => {
+describe("dynamicViewport", () => {
   test.each([
     ["width: '100vw'", "width: '100dvw'"],
     ["maxH: 'calc(100vh - 2rem)'", "maxH: 'calc(100dvh - 2rem)'"],
     ["h: '100dvh'", "h: '100dvh'"],
     ["h: '50svh'", "h: '50svh'"],
-    ['const vh = 1 // 100vh', 'const vh = 1 // 100vh'],
-  ])('%s', (source, expected) => {
+    ["const vh = 1 // 100vh", "const vh = 1 // 100vh"],
+  ])("%s", (source, expected) => {
     expect(dynamicViewport(source)).toBe(expected)
   })
 })
 
-describe('stableKeys', () => {
-  test('keys pagination pages by number', () => {
+describe("stableKeys", () => {
+  test("keys pagination pages by number", () => {
     expect(stableKeys('<Item asChild key={index} type="page" value={page.value} {...rest}>')).toBe(
       '<Item asChild key={page.value} type="page" value={page.value} {...rest}>',
     )
   })
 
-  test('keys slider marks by value', () => {
-    expect(stableKeys('<Marker key={index} value={value}>')).toBe('<Marker key={value} value={value}>')
+  test("keys slider marks by value", () => {
+    expect(stableKeys("<Marker key={index} value={value}>")).toBe(
+      "<Marker key={value} value={value}>",
+    )
   })
 
-  test('leaves unknown lists alone', () => {
-    const source = '{rows.map((row, index) => <Row key={index} />)}'
+  test("leaves unknown lists alone", () => {
+    const source = "{rows.map((row, index) => <Row key={index} />)}"
     expect(stableKeys(source)).toBe(source)
   })
 })
 
-describe('addReducedMotion', () => {
-  const source = "export const globalCss = {\n  extend: {\n    html: { colorPalette: 'gray' },\n  },\n}\n"
+describe("addReducedMotion", () => {
+  const source =
+    "export const globalCss = {\n  extend: {\n    html: { colorPalette: 'gray' },\n  },\n}\n"
 
-  test('adds the media rule once', () => {
+  test("adds the media rule once", () => {
     const once = addReducedMotion(source)
     expect(once).toContain("'@media (prefers-reduced-motion: reduce)'")
     expect(once).toContain("html: { colorPalette: 'gray' }")

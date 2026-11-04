@@ -1,12 +1,11 @@
 #!/usr/bin/env bun
-import { parseArgs } from 'node:util'
-import packageJson from '../package.json'
-import { add } from './commands/add'
-import { debug } from './commands/debug'
-import { init } from './commands/init'
+import { parseArgs } from "node:util"
+import packageJson from "../package.json"
+import { add } from "./commands/add"
+import { debug } from "./commands/debug"
+import { init } from "./commands/init"
 
-process.on('SIGINT', () => process.exit(0))
-process.on('SIGTERM', () => process.exit(0))
+const ARGUMENTS_START = 2
 
 const usage = `Usage: park <command> [options]
 
@@ -26,36 +25,44 @@ Options:
   -v, --version                display the version number
   -h, --help                   display help for command`
 
+const write = (text: string): void => {
+  process.stdout.write(`${text}\n`)
+}
+
 const { values, positionals } = parseArgs({
-  args: Bun.argv.slice(2),
   allowPositionals: true,
+  args: Bun.argv.slice(ARGUMENTS_START),
   options: {
-    all: { type: 'boolean', default: false },
-    framework: { type: 'string' },
-    accent: { type: 'string' },
-    gray: { type: 'string' },
-    radius: { type: 'string' },
-    yes: { type: 'boolean', short: 'y', default: false },
-    help: { type: 'boolean', short: 'h', default: false },
-    version: { type: 'boolean', short: 'v', default: false },
+    accent: { type: "string" },
+    all: { default: false, type: "boolean" },
+    framework: { type: "string" },
+    gray: { type: "string" },
+    help: { default: false, short: "h", type: "boolean" },
+    radius: { type: "string" },
+    version: { default: false, short: "v", type: "boolean" },
+    yes: { default: false, short: "y", type: "boolean" },
   },
 })
 
 const [command, ...rest] = positionals
 
-if (values.version) console.log(packageJson.version)
-else if (values.help || !command) console.log(usage)
-else if (command === 'init')
+if (values.version) {
+  write(packageJson.version)
+} else if (values.help || command === undefined) {
+  write(usage)
+} else if (command === "init") {
   await init({
-    framework: values.framework,
     accent: values.accent,
+    framework: values.framework,
     gray: values.gray,
     radius: values.radius,
     yes: values.yes,
   })
-else if (command === 'add') await add(rest, { all: values.all })
-else if (command === 'debug') await debug()
-else {
-  console.error(`Unknown command "${command}".\n\n${usage}`)
-  process.exit(1)
+} else if (command === "add") {
+  await add(rest, { all: values.all })
+} else if (command === "debug") {
+  await debug()
+} else {
+  process.stderr.write(`Unknown command "${command}".\n\n${usage}\n`)
+  process.exitCode = 1
 }

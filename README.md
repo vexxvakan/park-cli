@@ -42,7 +42,6 @@ Known upstream issues left as is:
 
 Verified with `init` and `add --all` (every React component) on TypeScript 7.0.2 and Panda 2.5.0: `tsc` reports no errors and `panda codegen` warns only about the checkbox recipe.
 
-
 A command-line tool for integrating Park UI components into your project.
 
 ## Usage
@@ -58,6 +57,7 @@ bunx @vexxdev/park-cli init
 ```
 
 This command will:
+
 - Guide you through framework selection
 - Let you choose accent and gray color themes
 - Install the necessary theme configuration
@@ -70,13 +70,13 @@ bunx @vexxdev/park-cli init --framework react --accent blue --gray slate --radiu
 bunx @vexxdev/park-cli init --yes   # react, neutral, neutral, sm
 ```
 
-| Flag | Values |
-| --- | --- |
-| `--framework` | `react`, `solid` |
-| `--accent` | any Park UI color (`blue`, `iris`, `jade`, …) |
-| `--gray` | `neutral`, `mauve`, `slate`, `sage`, `olive`, `sand` |
-| `--radius` | `none`, `xs`, `sm`, `md`, `lg`, `xl`, `2xl` |
-| `-y`, `--yes` | use defaults for flags not given |
+| Flag          | Values                                               |
+| ------------- | ---------------------------------------------------- |
+| `--framework` | `react`, `solid`                                     |
+| `--accent`    | any Park UI color (`blue`, `iris`, `jade`, …)        |
+| `--gray`      | `neutral`, `mauve`, `slate`, `sage`, `olive`, `sand` |
+| `--radius`    | `none`, `xs`, `sm`, `md`, `lg`, `xl`, `2xl`          |
+| `-y`, `--yes` | use defaults for flags not given                     |
 
 ### Add Components
 
@@ -112,6 +112,16 @@ bunx @vexxdev/park-cli debug
 park -v, --version    # Display version number
 park -h, --help       # Display help information
 ```
+
+## Development
+
+```bash
+bun install
+bun run verify   # oxfmt --check, oxlint (type-aware), tsc, bun test
+bun run build
+```
+
+`oxlint` runs every rule category as an error (`.oxlintrc.json`); fix findings in code rather than disabling rules.
 
 ## Support
 

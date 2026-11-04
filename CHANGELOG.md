@@ -13,6 +13,11 @@
 - Registry colors are written as `oklch()`: hex and `rgb()`/`rgba()` values in installed files are converted (lossless for every 8-bit sRGB color, alpha included), and `black`/`white` keywords in shadow values become `{colors.black}`/`{colors.white}` tokens.
 - `init` flags for non-interactive use: `--framework`, `--accent`, `--gray`, `--radius`, and `-y, --yes` for defaults. Without a terminal, `init` fails and names the missing flags instead of waiting on a prompt.
 
+### Changed
+
+- Cancelling `init` (Ctrl+C) exits with code 0 and writes nothing; failures to find `components.json`, `tsconfig.json` or `panda.config.ts` exit with code 1.
+- The recipe index is edited as text instead of through a syntax tree.
+
 ### Fixed
 
 - `init` applies the chosen border radius; it always wrote the `sm` scale.

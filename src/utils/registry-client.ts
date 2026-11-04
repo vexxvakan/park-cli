@@ -1,15 +1,47 @@
-import { Effect, pipe, Schema } from 'effect'
-import { type Framework, type RegistryItem, registryIndexList, registryItem } from '../schema'
-import { Config } from './config'
-import { HttpError, RegistryItemNotFound } from './errors'
+import type * as p from "@clack/prompts"
+import { Effect, Schema } from "effect"
+import { registryIndexList, registryItem } from "../schema"
+import type { Framework, RegistryItem } from "../schema"
+import { Config } from "./config"
+import { HttpError } from "./errors/http-error"
+import { RegistryItemNotFound } from "./errors/registry-item-not-found"
 
-const REGISTRY_URL = 'https://park-ui.com/registry'
+const REGISTRY_URL = "https://park-ui.com/registry"
 const TIMEOUT_MS = 15_000
+const NOT_FOUND_STATUS = 404
+const NONE = 0
 
-type RegistryError = ReturnType<typeof HttpError> | ReturnType<typeof RegistryItemNotFound>
+export type RegistryError = HttpError | RegistryItemNotFound
+
+type RegistryIndex = typeof registryIndexList.Type
 
 interface Params {
-  ids: string[]
+  readonly ids: readonly string[]
+}
+
+/** Accent and gray choices, as prompt options. */
+export interface Colors {
+  readonly accentColors: p.Option<string>[]
+  readonly neutralColors: p.Option<string>[]
+}
+
+const GRAY_COLORS = new Set(["neutral", "mauve", "slate", "sage", "olive", "sand"])
+
+const readBody = (
+  response: Response,
+  path: string,
+  id: string,
+): Effect.Effect<unknown, RegistryError> => {
+  if (response.status === NOT_FOUND_STATUS) {
+    return Effect.fail(new RegistryItemNotFound(id))
+  }
+  if (!response.ok) {
+    return Effect.fail(new HttpError(path, `HTTP ${response.status}`))
+  }
+  return Effect.tryPromise({
+    catch: (cause) => new HttpError(path, cause),
+    try: async (): Promise<unknown> => response.json(),
+  })
 }
 
 const fetchJson = <A, I>(
@@ -17,53 +49,37 @@ const fetchJson = <A, I>(
   schema: Schema.Schema<A, I>,
   id: string,
 ): Effect.Effect<A, RegistryError> =>
-  pipe(
-    Effect.tryPromise({
-      try: () => fetch(`${REGISTRY_URL}/${path}.json`, { signal: AbortSignal.timeout(TIMEOUT_MS) }),
-      catch: (cause) => HttpError(path, cause),
-    }),
-    Effect.flatMap((response): Effect.Effect<unknown, RegistryError> =>
-      response.status === 404
-        ? Effect.fail(RegistryItemNotFound(id))
-        : response.ok
-          ? Effect.tryPromise({ try: () => response.json(), catch: (cause) => HttpError(path, cause) })
-          : Effect.fail(HttpError(path, `HTTP ${response.status}`)),
-    ),
+  Effect.tryPromise({
+    catch: (cause) => new HttpError(path, cause),
+    try: () => fetch(`${REGISTRY_URL}/${path}.json`, { signal: AbortSignal.timeout(TIMEOUT_MS) }),
+  }).pipe(
+    Effect.flatMap((response) => readBody(response, path, id)),
     Effect.flatMap((json) =>
-      Schema.decodeUnknown(schema)(json).pipe(Effect.mapError((cause) => HttpError(path, cause))),
-    ),
-  )
-
-const fetchIndex = (framework: Framework) =>
-  fetchJson(`${framework}/index`, registryIndexList, 'index')
-
-export const fetchColors = () =>
-  fetchIndex('react').pipe(
-    Effect.map((items) => items.filter((item) => item.type === 'registry:color')),
-    Effect.map((colors) => {
-      const grayColorNames = ['neutral', 'mauve', 'slate', 'sage', 'olive', 'sand']
-
-      const accentColors = colors.map(({ name }) => ({ value: name }))
-      const neutralColors = colors
-        .filter((color) => grayColorNames.includes(color.name))
-        .map(({ name }) => ({ value: name }))
-
-      return { accentColors, neutralColors }
-    }),
-  )
-
-export const fetchRegistryIndex = () =>
-  Config.pipe(Effect.flatMap(({ framework }) => fetchIndex(framework)))
-
-export const fetchRegistryItems = ({ ids }: Params) =>
-  Config.pipe(
-    Effect.flatMap(({ framework }) =>
-      pipe(
-        fetchRegistryItemsRecursive(ids, new Set(), framework),
-        Effect.map((items) => Array.from(items.values())),
+      Schema.decodeUnknown(schema)(json).pipe(
+        Effect.mapError((cause) => new HttpError(path, cause)),
       ),
     ),
   )
+
+const fetchIndex = (framework: Framework): Effect.Effect<RegistryIndex, RegistryError> =>
+  fetchJson(`${framework}/index`, registryIndexList, "index")
+
+/** Every registry color as an accent choice, and the gray ones as gray choices. */
+export const fetchColors = (): Effect.Effect<Colors, RegistryError> =>
+  fetchIndex("react").pipe(
+    Effect.map((items) => {
+      const colors = items.filter((item) => item.type === "registry:color")
+      return {
+        accentColors: colors.map(({ name }) => ({ value: name })),
+        neutralColors: colors
+          .filter((color) => GRAY_COLORS.has(color.name))
+          .map(({ name }) => ({ value: name })),
+      }
+    }),
+  )
+
+export const fetchRegistryIndex = (): Effect.Effect<RegistryIndex, RegistryError, Config> =>
+  Config.pipe(Effect.flatMap(({ framework }) => fetchIndex(framework)))
 
 const fetchRegistryItemsRecursive = (
   ids: readonly string[],
@@ -71,26 +87,42 @@ const fetchRegistryItemsRecursive = (
   framework: Framework,
 ): Effect.Effect<Map<string, RegistryItem>, RegistryError> => {
   const newIds = ids.filter((id) => !visited.has(id))
-  if (newIds.length === 0) return Effect.succeed(new Map())
-
-  for (const id of newIds) visited.add(id)
-
-  return pipe(
-    Effect.all(
-      newIds.map((id) => fetchJson(`${framework}/${encodeURIComponent(id)}`, registryItem, id)),
-      { concurrency: 'unbounded' },
-    ),
+  if (newIds.length === NONE) {
+    return Effect.succeed(new Map<string, RegistryItem>())
+  }
+  for (const id of newIds) {
+    visited.add(id)
+  }
+  return Effect.all(
+    newIds.map((id) => fetchJson(`${framework}/${encodeURIComponent(id)}`, registryItem, id)),
+    { concurrency: "unbounded" },
+  ).pipe(
     Effect.flatMap((items) =>
-      pipe(
-        fetchRegistryItemsRecursive(
-          items.flatMap((item) => item.registryDependencies ?? []),
-          visited,
-          framework,
-        ),
+      fetchRegistryItemsRecursive(
+        items.flatMap((item) => item.registryDependencies ?? []),
+        visited,
+        framework,
+      ).pipe(
         Effect.map(
-          (depItems) => new Map([...new Map(items.map((item) => [item.name, item])), ...depItems]),
+          (dependencies) =>
+            new Map<string, RegistryItem>([
+              ...items.map((item): [string, RegistryItem] => [item.name, item]),
+              ...dependencies,
+            ]),
         ),
       ),
     ),
   )
 }
+
+/** The requested items and every registry item they depend on. */
+export const fetchRegistryItems = ({
+  ids,
+}: Params): Effect.Effect<RegistryItem[], RegistryError, Config> =>
+  Config.pipe(
+    Effect.flatMap(({ framework }) =>
+      fetchRegistryItemsRecursive(ids, new Set(), framework).pipe(
+        Effect.map((items) => [...items.values()]),
+      ),
+    ),
+  )
